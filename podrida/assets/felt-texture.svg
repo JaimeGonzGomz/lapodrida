@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grain" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#1B5E20"/>
+      <circle cx="5" cy="5" r="0.5" fill="#194D1C" opacity="0.3"/>
+      <circle cx="1" cy="1" r="0.5" fill="#194D1C" opacity="0.3"/>
+      <circle cx="9" cy="9" r="0.5" fill="#194D1C" opacity="0.3"/>
+      <circle cx="3" cy="7" r="0.5" fill="#194D1C" opacity="0.3"/>
+      <circle cx="7" cy="3" r="0.5" fill="#194D1C" opacity="0.3"/>
+    </pattern>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="graynoise"/>
+      <feBlend in="SourceGraphic" in2="graynoise" mode="multiply"/>
+    </filter>
+  </defs>
+  <rect width="100" height="100" fill="url(#grain)" filter="url(#noise)"/>
+</svg>
