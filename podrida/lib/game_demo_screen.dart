@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:podrida/models/rules.dart';
 import 'models/card.dart';
 import 'models/player.dart';
 import 'models/game_state.dart';
@@ -6,6 +7,8 @@ import 'widgets/animated_card_widget.dart';
 import 'package:flutter/services.dart';
 import 'widgets/compact_card_display.dart';
 import 'widgets/mobile_hand_view.dart';
+import 'widgets/player_info_card.dart';
+import 'widgets/played_cards_display.dart';
 
 class GameDemoScreen extends StatefulWidget {
   const GameDemoScreen({super.key});
@@ -16,8 +19,8 @@ class GameDemoScreen extends StatefulWidget {
 
 class _GameDemoScreenState extends State<GameDemoScreen> {
   late GameState gameState;
-  int? hoveredPlayerIndex;
   bool isHandExpanded = true;
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +35,30 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
       Player(id: '3', name: 'Player 3'),
       Player(id: '4', name: 'Player 4'),
     ]);
+  }
+
+  void _handleCardPlayed(PlayingCard card) {
+    setState(() {
+      if (gameState.playCard(gameState.players[0], card)) {
+        if (gameState.currentPlayerIndex == 3) {
+          _playAutomaticCard();
+        }
+      }
+    });
+  }
+
+  void _playAutomaticCard() {
+    final player4 = gameState.players[3];
+    final playableCards = GameRules.getPlayableCards(
+        player4.hand, gameState.currentTrick.leadCard);
+
+    if (playableCards.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        setState(() {
+          gameState.playCard(player4, playableCards.first);
+        });
+      });
+    }
   }
 
   @override
@@ -60,27 +87,39 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                         children: [
                           if (gameState.trumpCard != null)
                             Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.3),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      'Trump Card',
-                                      style: TextStyle(color: Colors.white),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (gameState.trumpCard != null)
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.3),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'Trump Card',
+                                            style:
+                                                TextStyle(color: Colors.white),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          CardWidget(
+                                            card: gameState.trumpCard!
+                                              ..faceUp = true,
+                                            width: 50,
+                                            height: 70,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    CardWidget(
-                                      card: gameState.trumpCard!..faceUp = true,
-                                      width: 50,
-                                      height: 100,
-                                    ),
-                                  ],
-                                ),
+                                  const SizedBox(width: 16),
+                                  // Add played cards display
+                                  if (gameState.currentTrick.cards.isNotEmpty)
+                                    PlayedCardsDisplay(gameState: gameState),
+                                ],
                               ),
                             ),
                           Positioned.fill(
@@ -121,7 +160,8 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
   Widget _buildPlayerPositions() {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final bool isHandExpanded = this.isHandExpanded; // Store state
+    bool isHandExpanded = this.isHandExpanded;
+
     return Stack(
       children: [
         // Top player
@@ -130,14 +170,10 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
           left: 0,
           right: 0,
           child: Center(
-            child: Column(
-              children: [
-                Text(
-                  gameState.players[2].name,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                CompactCardDisplay(cards: gameState.players[2].hand),
-              ],
+            child: PlayerInfoCard(
+              player: gameState.players[2],
+              score: 750,
+              cards: gameState.players[2].hand,
             ),
           ),
         ),
@@ -146,14 +182,11 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
         Positioned(
           left: 10,
           top: screenHeight * 0.3,
-          child: Column(
-            children: [
-              Text(
-                gameState.players[1].name,
-                style: const TextStyle(color: Colors.white),
-              ),
-              CompactCardDisplay(cards: gameState.players[1].hand),
-            ],
+          child: PlayerInfoCard(
+            player: gameState.players[1],
+            score: 500,
+            cards: gameState.players[1].hand,
+            isVertical: true,
           ),
         ),
 
@@ -161,20 +194,29 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
         Positioned(
           right: 10,
           top: screenHeight * 0.3,
-          child: Column(
-            children: [
-              Text(
-                gameState.players[3].name,
-                style: const TextStyle(color: Colors.white),
-              ),
-              CompactCardDisplay(cards: gameState.players[3].hand),
-            ],
+          child: PlayerInfoCard(
+            player: gameState.players[3],
+            score: 250,
+            cards: gameState.players[3].hand,
+            isVertical: true,
           ),
         ),
 
-        // Bottom player (current)
+        // Current player's info (left side)
         Positioned(
-          bottom: 10,
+          left: 10,
+          bottom: screenHeight * 0.15,
+          child: PlayerInfoCard(
+            player: gameState.players[0],
+            score: 1000,
+            cards: gameState.players[0].hand,
+            isCurrentPlayer: true,
+          ),
+        ),
+
+        // Current player's hand (center bottom)
+        Positioned(
+          bottom: 0,
           left: 0,
           right: 0,
           child: Center(
@@ -183,7 +225,9 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
               isCurrentPlayer: true,
               isExpanded: isHandExpanded,
               onToggleExpand: (bool expanded) =>
-                  setState(() => this.isHandExpanded = expanded),
+                  setState(() => isHandExpanded = expanded),
+              gameState: gameState,
+              onCardPlayed: _handleCardPlayed,
             ),
           ),
         ),

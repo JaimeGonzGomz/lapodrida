@@ -2,11 +2,34 @@ import 'dart:math';
 import 'card.dart';
 import 'player.dart';
 
+class Trick {
+  List<PlayingCard> cards = [];
+  List<Player> players = [];
+  PlayingCard? leadCard;
+
+  void addCard(PlayingCard card, Player player) {
+    cards.add(card);
+    players.add(player);
+    if (leadCard == null) {
+      // Change this condition
+      leadCard = card;
+    }
+  }
+
+  void clear() {
+    cards.clear();
+    players.clear();
+    leadCard = null;
+  }
+}
+
 class GameState {
   List<Player> players = [];
   PlayingCard? trumpCard;
   List<PlayingCard> deck = [];
-  int cardsPerPlayer = 6; // Add this new property
+  int cardsPerPlayer = 6;
+  Trick currentTrick = Trick();
+  int currentPlayerIndex = 0;
 
   void startNewGame(List<Player> gamePlayers) {
     players = gamePlayers;
@@ -15,16 +38,14 @@ class GameState {
   }
 
   void startNewRound() {
-    // Clear all hands
     for (var player in players) {
       player.hand.clear();
     }
-
-    // Reset and shuffle deck
+    currentTrick.clear();
+    currentPlayerIndex = 0;
     _initializeDeck();
     _shuffleDeck();
 
-    // Deal cards (cardsPerPlayer per player)
     for (var i = 0; i < cardsPerPlayer; i++) {
       for (var player in players) {
         if (deck.isNotEmpty) {
@@ -33,10 +54,24 @@ class GameState {
       }
     }
 
-    // Set trump card
     if (deck.isNotEmpty) {
       trumpCard = deck.removeLast();
     }
+  }
+
+  bool playCard(Player player, PlayingCard card) {
+    if (players[currentPlayerIndex].id != player.id) {
+      return false;
+    }
+    if (!player.hand.remove(card)) {
+      return false;
+    }
+    currentTrick.addCard(card, player);
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    if (currentTrick.cards.length == players.length) {
+      currentTrick.clear();
+    }
+    return true;
   }
 
   void _initializeDeck() {
@@ -49,7 +84,6 @@ class GameState {
   }
 
   void setCardsPerPlayer(int count) {
-    // Ensure count is within reasonable bounds (1-13)
     cardsPerPlayer = count.clamp(1, 13);
   }
 
