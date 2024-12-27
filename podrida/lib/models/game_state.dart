@@ -6,6 +6,7 @@ class GameState {
   List<Player> players = [];
   PlayingCard? trumpCard;
   List<PlayingCard> deck = [];
+  int cardsPerPlayer = 6; // Add this new property
 
   void startNewGame(List<Player> gamePlayers) {
     players = gamePlayers;
@@ -23,8 +24,8 @@ class GameState {
     _initializeDeck();
     _shuffleDeck();
 
-    // Deal cards (6 cards per player)
-    for (var i = 0; i < 6; i++) {
+    // Deal cards (cardsPerPlayer per player)
+    for (var i = 0; i < cardsPerPlayer; i++) {
       for (var player in players) {
         if (deck.isNotEmpty) {
           player.hand.add(deck.removeLast());
@@ -45,6 +46,11 @@ class GameState {
         deck.add(PlayingCard(suit: suit, rank: rank));
       }
     }
+  }
+
+  void setCardsPerPlayer(int count) {
+    // Ensure count is within reasonable bounds (1-13)
+    cardsPerPlayer = count.clamp(1, 13);
   }
 
   void _shuffleDeck() {

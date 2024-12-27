@@ -27,7 +27,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
 
   void setupGame() {
     gameState.startNewGame([
-      Player(id: '1', name: 'Player 1'),
+      Player(id: '1', name: 'Player Name'),
       Player(id: '2', name: 'Player 2'),
       Player(id: '3', name: 'Player 3'),
       Player(id: '4', name: 'Player 4'),
@@ -77,7 +77,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                                     CardWidget(
                                       card: gameState.trumpCard!..faceUp = true,
                                       width: 50,
-                                      height: 70,
+                                      height: 100,
                                     ),
                                   ],
                                 ),
@@ -134,7 +134,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
               children: [
                 Text(
                   gameState.players[2].name,
-                  style: TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                 ),
                 CompactCardDisplay(cards: gameState.players[2].hand),
               ],
@@ -150,7 +150,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
             children: [
               Text(
                 gameState.players[1].name,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
               ),
               CompactCardDisplay(cards: gameState.players[1].hand),
             ],
@@ -165,7 +165,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
             children: [
               Text(
                 gameState.players[3].name,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
               ),
               CompactCardDisplay(cards: gameState.players[3].hand),
             ],
@@ -233,6 +233,43 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Card count controls
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline,
+                    color: Colors.white70),
+                onPressed: () {
+                  setState(() {
+                    gameState.setCardsPerPlayer(gameState.cardsPerPlayer - 1);
+                  });
+                },
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${gameState.cardsPerPlayer} cards',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              IconButton(
+                icon:
+                    const Icon(Icons.add_circle_outline, color: Colors.white70),
+                onPressed: () {
+                  setState(() {
+                    gameState.setCardsPerPlayer(gameState.cardsPerPlayer + 1);
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
           ElevatedButton(
             onPressed: () => setState(() => gameState.startNewRound()),
             style: ElevatedButton.styleFrom(

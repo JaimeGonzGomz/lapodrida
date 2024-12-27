@@ -7,11 +7,11 @@ class CompactCardDisplay extends StatefulWidget {
   final bool isCurrentPlayer;
 
   const CompactCardDisplay({
-    Key? key,
+    super.key,
     required this.cards,
     this.showAll = false,
     this.isCurrentPlayer = false,
-  }) : super(key: key);
+  });
 
   @override
   State<CompactCardDisplay> createState() => _CompactCardDisplayState();
