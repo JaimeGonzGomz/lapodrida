@@ -8,11 +8,11 @@ class AnimatedCardWidget extends StatefulWidget {
   final double height;
 
   const AnimatedCardWidget({
-    Key? key,
+    super.key,
     required this.card,
     required this.width,
     required this.height,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedCardWidget> createState() => _AnimatedCardWidgetState();
@@ -32,7 +32,7 @@ class _AnimatedCardWidgetState extends State<AnimatedCardWidget> {
         transform: Matrix4.identity()
           ..scale(isHovered ? 1.2 : 1.0)
           ..translate(0.0, isHovered ? -10.0 : 0.0),
-        child: Container(
+        child: SizedBox(
           width: widget.width,
           height: widget.height,
           child: SvgPicture.asset(

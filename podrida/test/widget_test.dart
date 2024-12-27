@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:podrida/main.dart';
 import 'package:podrida/game_demo_screen.dart';
 
 void main() {
   testWidgets('Game screen loads correctly', (WidgetTester tester) async {
     // Build our app and trigger a frame
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: GameDemoScreen(),
     ));
 

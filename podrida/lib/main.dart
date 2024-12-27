@@ -6,7 +6,7 @@ void main() {
 }
 
 class PodridaApp extends StatelessWidget {
-  const PodridaApp({Key? key}) : super(key: key);
+  const PodridaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class PodridaApp extends StatelessWidget {
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: GameDemoScreen(),
+      home: const GameDemoScreen(),
     );
   }
 }

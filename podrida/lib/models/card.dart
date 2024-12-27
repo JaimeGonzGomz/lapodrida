@@ -37,15 +37,15 @@ class CardWidget extends StatelessWidget {
   final double height;
 
   const CardWidget({
-    Key? key,
+    super.key,
     required this.card,
     required this.width,
     required this.height,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: width,
       height: height,
       child: SvgPicture.asset(

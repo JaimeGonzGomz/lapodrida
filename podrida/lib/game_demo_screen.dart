@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'models/card.dart';
 import 'models/player.dart';
 import 'models/game_state.dart';
 import 'widgets/animated_card_widget.dart';
+import 'package:flutter/services.dart';
+import 'widgets/compact_card_display.dart';
+import 'widgets/mobile_hand_view.dart';
 
 class GameDemoScreen extends StatefulWidget {
+  const GameDemoScreen({super.key});
+
   @override
   _GameDemoScreenState createState() => _GameDemoScreenState();
 }
@@ -13,7 +17,7 @@ class GameDemoScreen extends StatefulWidget {
 class _GameDemoScreenState extends State<GameDemoScreen> {
   late GameState gameState;
   int? hoveredPlayerIndex;
-
+  bool isHandExpanded = true;
   @override
   void initState() {
     super.initState();
@@ -34,7 +38,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -57,7 +61,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                           if (gameState.trumpCard != null)
                             Center(
                               child: Container(
-                                padding: EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withOpacity(0.3),
                                   borderRadius: BorderRadius.circular(8),
@@ -65,11 +69,11 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Trump Card',
                                       style: TextStyle(color: Colors.white),
                                     ),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     CardWidget(
                                       card: gameState.trumpCard!..faceUp = true,
                                       width: 50,
@@ -102,7 +106,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
       itemCount: player.hand.length,
       itemBuilder: (context, index) {
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           child: AnimatedCardWidget(
             // Use AnimatedCardWidget instead of CardWidget
             card: player.hand[index]..faceUp = isCurrentPlayer,
@@ -115,91 +119,73 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
   }
 
   Widget _buildPlayerPositions() {
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bool isHandExpanded = this.isHandExpanded; // Store state
     return Stack(
       children: [
-        // Player 3 (Top)
+        // Top player
         Positioned(
-          top: 20,
-          left: screenWidth * 0.3,
-          right: screenWidth * 0.3,
-          child: _buildPlayerHand(2, Alignment.topCenter),
-        ),
-        // Player 2 (Left)
-        Positioned(
-          left: 20,
-          top: screenHeight * 0.2,
-          child: Column(
-            children: [
-              RotatedBox(
-                quarterTurns:
-                    3, // Changed rotation to make cards stack vertically
-                child: Text(
-                  gameState.players[1].name,
+          top: 10,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Column(
+              children: [
+                Text(
+                  gameState.players[2].name,
                   style: TextStyle(color: Colors.white),
                 ),
+                CompactCardDisplay(cards: gameState.players[2].hand),
+              ],
+            ),
+          ),
+        ),
+
+        // Left player
+        Positioned(
+          left: 10,
+          top: screenHeight * 0.3,
+          child: Column(
+            children: [
+              Text(
+                gameState.players[1].name,
+                style: TextStyle(color: Colors.white),
               ),
-              SizedBox(height: 10),
-              SizedBox(
-                height:
-                    screenHeight * 0.4, // Constrain height for vertical cards
-                child: Column(
-                  children: gameState.players[1].hand.map((card) {
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: AnimatedCardWidget(
-                        card: card,
-                        width: 70,
-                        height: 100,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
+              CompactCardDisplay(cards: gameState.players[1].hand),
             ],
           ),
         ),
-        // Player 4 (Right)
+
+        // Right player
         Positioned(
-          right: 20,
-          top: screenHeight * 0.2,
+          right: 10,
+          top: screenHeight * 0.3,
           child: Column(
             children: [
-              RotatedBox(
-                quarterTurns: 1,
-                child: Text(
-                  gameState.players[3].name,
-                  style: TextStyle(color: Colors.white),
-                ),
+              Text(
+                gameState.players[3].name,
+                style: TextStyle(color: Colors.white),
               ),
-              SizedBox(height: 10),
-              SizedBox(
-                height: screenHeight * 0.4,
-                child: Column(
-                  children: gameState.players[3].hand.map((card) {
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: AnimatedCardWidget(
-                        card: card,
-                        width: 70,
-                        height: 100,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
+              CompactCardDisplay(cards: gameState.players[3].hand),
             ],
           ),
         ),
-        // Player 1 (Bottom)
+
+        // Bottom player (current)
         Positioned(
-          bottom: 20,
-          left: screenWidth * 0.3,
-          right: screenWidth * 0.3,
-          child: _buildPlayerHand(0, Alignment.bottomCenter,
-              isCurrentPlayer: true),
+          bottom: 10,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: MobileHandView(
+              player: gameState.players[0],
+              isCurrentPlayer: true,
+              isExpanded: isHandExpanded,
+              onToggleExpand: (bool expanded) =>
+                  setState(() => this.isHandExpanded = expanded),
+            ),
+          ),
         ),
       ],
     );
@@ -208,15 +194,15 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
   Widget _buildPlayerHand(int playerIndex, Alignment alignment,
       {bool isCurrentPlayer = false}) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             gameState.players[playerIndex].name,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           SizedBox(
             height: 120,
             child: ListView.builder(
@@ -224,7 +210,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
               itemCount: gameState.players[playerIndex].hand.length,
               itemBuilder: (context, index) {
                 return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: AnimatedCardWidget(
                     card: gameState.players[playerIndex].hand[index]
                       ..faceUp = isCurrentPlayer,
@@ -242,16 +228,30 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
 
   Widget _buildControlBar() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       color: Colors.black45,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
             onPressed: () => setState(() => gameState.startNewRound()),
-            child: Text('Deal New Round'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green[700],
+            ),
+            child: const Text('Deal New Round'),
+          ),
+          const SizedBox(width: 16),
+          TextButton.icon(
+            onPressed: () => setState(() => isHandExpanded = !isHandExpanded),
+            icon: Icon(
+              isHandExpanded
+                  ? Icons.keyboard_arrow_down
+                  : Icons.keyboard_arrow_up,
+              color: Colors.white70,
+            ),
+            label: Text(
+              isHandExpanded ? 'Show Current Round' : 'Show Hand',
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
         ],
