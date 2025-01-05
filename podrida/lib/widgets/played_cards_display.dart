@@ -15,7 +15,7 @@ class PlayedCardsDisplay extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withAlpha(77),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

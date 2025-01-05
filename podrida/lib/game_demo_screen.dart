@@ -1,62 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:podrida/models/rules.dart';
+
 import 'models/card.dart';
 import 'models/player.dart';
 import 'models/game_state.dart';
-import 'widgets/animated_card_widget.dart';
 import 'widgets/mobile_hand_view.dart';
 import 'widgets/player_info_card.dart';
 import 'widgets/played_cards_display.dart';
+import 'models/bot_player.dart';
+
+import 'widgets/trick_history_display.dart';
 
 class GameDemoScreen extends StatefulWidget {
   const GameDemoScreen({super.key});
 
   @override
-  _GameDemoScreenState createState() => _GameDemoScreenState();
+  State<GameDemoScreen> createState() => GameDemoScreenState();
 }
 
-class _GameDemoScreenState extends State<GameDemoScreen> {
-  late GameState gameState;
+class GameDemoScreenState extends State<GameDemoScreen> {
+  // Initialize gameState and isHandExpanded as class fields
+  GameState gameState = GameState();
   bool isHandExpanded = true;
 
   @override
   void initState() {
     super.initState();
-    gameState = GameState();
+    // Call setupGame in initState
     setupGame();
   }
 
   void setupGame() {
-    gameState.startNewGame([
-      Player(id: '1', name: 'Player Name'),
-      Player(id: '2', name: 'Player 2'),
-      Player(id: '3', name: 'Player 3'),
-      Player(id: '4', name: 'Player 4'),
-    ]);
+    setState(() {
+      gameState.startNewGame([
+        Player(id: '1', name: 'Player Name'),
+        Player(id: '2', name: 'Player 2'),
+        Player(id: '3', name: 'Player 3'),
+        Player(id: '4', name: 'Player 4'),
+      ]);
+    });
   }
 
   void _handleCardPlayed(PlayingCard card) {
     setState(() {
       if (gameState.playCard(gameState.players[0], card)) {
-        if (gameState.currentPlayerIndex == 3) {
-          _playAutomaticCard();
-        }
+        // After human plays, trigger bot plays for subsequent players
+        _triggerBotPlay();
       }
     });
   }
 
-  void _playAutomaticCard() {
-    final player4 = gameState.players[3];
-    final playableCards = GameRules.getPlayableCards(
-        player4.hand, gameState.currentTrick.leadCard);
+  void _triggerBotPlay() {
+    // Don't trigger if it's the human player's turn
+    if (gameState.currentPlayerIndex == 0) return;
 
-    if (playableCards.isNotEmpty) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        setState(() {
-          gameState.playCard(player4, playableCards.first);
-        });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        try {
+          final currentBot = gameState.players[gameState.currentPlayerIndex];
+          PlayingCard selectedCard =
+              BotPlayer.playCard(currentBot, gameState.currentTrick.leadCard);
+
+          // For debugging - print bot's decision making
+          BotPlayer.debugBotPlay(currentBot, gameState.currentTrick.leadCard);
+
+          if (gameState.playCard(currentBot, selectedCard)) {
+            // Recursively trigger next bot's play
+            _triggerBotPlay();
+          }
+        } catch (e) {
+          print('Error during bot play: $e');
+        }
       });
-    }
+    });
   }
 
   @override
@@ -92,7 +107,7 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.3),
+                                        color: Colors.black.withAlpha(77),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Column(
@@ -114,7 +129,6 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
                                       ),
                                     ),
                                   const SizedBox(width: 16),
-                                  // Add played cards display
                                   if (gameState.currentTrick.cards.isNotEmpty)
                                     PlayedCardsDisplay(gameState: gameState),
                                 ],
@@ -137,28 +151,8 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
     );
   }
 
-  Widget _buildCards(Player player, bool isCurrentPlayer) {
-    return ListView.builder(
-      scrollDirection: Axis.horizontal,
-      itemCount: player.hand.length,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: AnimatedCardWidget(
-            // Use AnimatedCardWidget instead of CardWidget
-            card: player.hand[index]..faceUp = isCurrentPlayer,
-            width: 70, // Made cards a bit bigger
-            height: 100,
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildPlayerPositions() {
-    final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    bool isHandExpanded = this.isHandExpanded;
 
     return Stack(
       children: [
@@ -233,107 +227,93 @@ class _GameDemoScreenState extends State<GameDemoScreen> {
     );
   }
 
-  Widget _buildPlayerHand(int playerIndex, Alignment alignment,
-      {bool isCurrentPlayer = false}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            gameState.players[playerIndex].name,
-            style: const TextStyle(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 120,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: gameState.players[playerIndex].hand.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: AnimatedCardWidget(
-                    card: gameState.players[playerIndex].hand[index]
-                      ..faceUp = isCurrentPlayer,
-                    width: 70,
-                    height: 100,
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildControlBar() {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.black45,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Card count controls
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline,
-                    color: Colors.white70),
-                onPressed: () {
-                  setState(() {
-                    gameState.setCardsPerPlayer(gameState.cardsPerPlayer - 1);
-                  });
-                },
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline,
+                      color: Colors.white70),
+                  onPressed: () {
+                    setState(() {
+                      gameState.setCardsPerPlayer(gameState.cardsPerPlayer - 1);
+                    });
+                  },
                 ),
-                child: Text(
-                  '${gameState.cardsPerPlayer} cards',
-                  style: const TextStyle(color: Colors.white),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${gameState.cardsPerPlayer} cards',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
+                TextButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        child: TrickHistoryDisplay(
+                          history: gameState.trickHistory,
+                          onClose: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.history, color: Colors.white70),
+                  label: const Text(
+                    'Show History',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline,
+                      color: Colors.white70),
+                  onPressed: () {
+                    setState(() {
+                      gameState.setCardsPerPlayer(gameState.cardsPerPlayer + 1);
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: () => setState(() => gameState.startNewRound()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[700],
               ),
-              IconButton(
-                icon:
-                    const Icon(Icons.add_circle_outline, color: Colors.white70),
-                onPressed: () {
-                  setState(() {
-                    gameState.setCardsPerPlayer(gameState.cardsPerPlayer + 1);
-                  });
-                },
+              child: const Text('Deal New Round'),
+            ),
+            const SizedBox(width: 16),
+            TextButton.icon(
+              onPressed: () => setState(() => isHandExpanded = !isHandExpanded),
+              icon: Icon(
+                isHandExpanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_up,
+                color: Colors.white70,
               ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: () => setState(() => gameState.startNewRound()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[700],
+              label: Text(
+                isHandExpanded ? 'Show Current Round' : 'Show Hand',
+                style: const TextStyle(color: Colors.white70),
+              ),
             ),
-            child: const Text('Deal New Round'),
-          ),
-          const SizedBox(width: 16),
-          TextButton.icon(
-            onPressed: () => setState(() => isHandExpanded = !isHandExpanded),
-            icon: Icon(
-              isHandExpanded
-                  ? Icons.keyboard_arrow_down
-                  : Icons.keyboard_arrow_up,
-              color: Colors.white70,
-            ),
-            label: Text(
-              isHandExpanded ? 'Show Current Round' : 'Show Hand',
-              style: const TextStyle(color: Colors.white70),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

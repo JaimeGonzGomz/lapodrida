@@ -22,10 +22,10 @@ class PlayerInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withAlpha(77),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withAlpha(25),
           width: 1,
         ),
       ),
@@ -38,7 +38,7 @@ class PlayerInfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.green.shade800.withOpacity(0.5),
+                color: Colors.green.shade800.withAlpha(123),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -65,7 +65,7 @@ class PlayerInfoCard extends StatelessWidget {
                 Text(
                   'Score: $score',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withAlpha(200),
                     fontSize: 12,
                   ),
                 ),
@@ -77,7 +77,7 @@ class PlayerInfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withAlpha(50),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(

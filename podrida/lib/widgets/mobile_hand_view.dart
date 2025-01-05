@@ -3,6 +3,7 @@ import '../models/card.dart';
 import '../models/player.dart';
 import '../models/game_state.dart';
 import '../models/rules.dart';
+import 'draggable_widget.dart';
 
 class MobileHandView extends StatefulWidget {
   final Player player;
@@ -28,19 +29,18 @@ class MobileHandView extends StatefulWidget {
 
 class _MobileHandViewState extends State<MobileHandView> {
   int? selectedIndex;
-  bool isDragging = false;
-  double dragOffset = 0.0;
+  bool isDropTargetActive = false;
 
   bool isCardPlayable(PlayingCard card) {
     return GameRules.canPlayCard(
         card, widget.gameState.currentTrick.leadCard, widget.player.hand);
   }
 
-  void resetCardState() {
-    setState(() {
-      isDragging = false;
-      dragOffset = 0.0;
-    });
+  bool get isPlayerTurn {
+    // Check if it's this player's turn by comparing with currentPlayerIndex
+    int playerIndex =
+        widget.gameState.players.indexWhere((p) => p.id == widget.player.id);
+    return playerIndex == widget.gameState.currentPlayerIndex;
   }
 
   @override
@@ -51,197 +51,141 @@ class _MobileHandViewState extends State<MobileHandView> {
     final cardHeight = cardWidth * 1.4;
     final totalCardsWidth =
         widget.player.hand.length * cardWidth * 0.4 + cardWidth * 0.6;
-
     final handContainerHeight =
         widget.isExpanded ? screenHeight * 0.35 : screenHeight * 0.15;
-    final dropZoneHeight = handContainerHeight / 2;
-    const bottomPadding = 10.0;
 
     return SizedBox(
-      height: widget.isExpanded ? screenHeight * 0.45 : screenHeight * 0.15,
+      height: screenHeight,
       child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
         children: [
-          if (widget.isExpanded)
-            Container(
-              width: totalCardsWidth + cardWidth * 0.4,
-              height: screenHeight * 0.45,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          if (isDragging && widget.isExpanded && selectedIndex != null)
+          // Drop Target Area
+          if (widget.isExpanded &&
+              isPlayerTurn) // Only show drop target on player's turn
             Positioned(
-              bottom: dropZoneHeight + bottomPadding,
-              child: Container(
-                width: totalCardsWidth + cardWidth * 0.4,
-                height: cardHeight * 1.2,
-                decoration: BoxDecoration(
-                  color: (dragOffset > dropZoneHeight * 0.8)
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.white.withOpacity(0.1),
-                  border: Border.all(
-                    color: (dragOffset > dropZoneHeight * 0.8)
-                        ? Colors.green
-                        : Colors.white,
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.arrow_upward,
-                        color: (dragOffset > dropZoneHeight * 0.8)
+              top: 80,
+              left: 0,
+              right: 0,
+              bottom: handContainerHeight + 20,
+              child: DragTarget<PlayingCard>(
+                onWillAccept: (card) {
+                  setState(() => isDropTargetActive = true);
+                  return card != null && isCardPlayable(card);
+                },
+                onAccept: (card) {
+                  setState(() => isDropTargetActive = false);
+                  widget.onCardPlayed(card);
+                },
+                onLeave: (_) => setState(() => isDropTargetActive = false),
+                builder: (context, candidateData, rejectedData) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: isDropTargetActive
                             ? Colors.green
-                            : Colors.white,
+                            : Colors.transparent,
+                        width: 2,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        (dragOffset > dropZoneHeight * 0.8)
-                            ? 'Release to Play Card'
-                            : 'Drag Card Here',
-                        style: TextStyle(
-                          color: (dragOffset > dropZoneHeight * 0.8)
-                              ? Colors.green
-                              : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                      color: isDropTargetActive
+                          ? Colors.green.withAlpha(40)
+                          : Colors.transparent,
+                    ),
+                    child: isDropTargetActive
+                        ? Center(
+                            child: Text(
+                              'Release to Play',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                  );
+                },
+              ),
+            ),
+
+          // Turn Indicator (when it's not player's turn)
+          if (!isPlayerTurn && widget.isExpanded)
+            Positioned(
+              top: screenHeight * 0.3,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(150),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Player ${widget.gameState.currentPlayerIndex + 1}\'s Turn',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // Cards
+          // Hand Container
           Positioned(
-            bottom: bottomPadding,
-            child: SizedBox(
-              width: totalCardsWidth,
-              height: handContainerHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: List.generate(widget.player.hand.length, (index) {
-                  final isSelected = selectedIndex == index;
-                  final card = widget.player.hand[index];
-                  final isPlayable = isCardPlayable(card);
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height:
+                widget.isExpanded ? screenHeight * 0.35 : screenHeight * 0.15,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  bottom: 10,
+                  child: SizedBox(
+                    width: totalCardsWidth,
+                    height: handContainerHeight,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children:
+                          List.generate(widget.player.hand.length, (index) {
+                        final card = widget.player.hand[index];
+                        final isPlayable = isCardPlayable(card);
 
-                  return Positioned(
-                    left: index * cardWidth * 0.4,
-                    bottom: 0,
-                    width: cardWidth,
-                    height: cardHeight,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onDoubleTap: widget.isExpanded
-                          ? () {
-                              if (isPlayable) {
-                                widget.onCardPlayed(card);
-                                setState(() {
-                                  selectedIndex = null;
-                                  isDragging = false;
-                                  dragOffset = 0.0;
-                                });
-                              }
-                            }
-                          : null,
-                      onTapDown: widget.isExpanded
-                          ? (details) {
-                              if (isPlayable && !isSelected) {
-                                setState(() {
-                                  selectedIndex = index;
-                                  isDragging = false;
-                                  dragOffset = 0.0;
-                                });
-                              }
-                            }
-                          : null,
-                      onTap: widget.isExpanded
-                          ? () {
-                              if (isPlayable && isSelected && !isDragging) {
-                                setState(() {
-                                  selectedIndex = null;
-                                  dragOffset = 0.0;
-                                });
-                              }
-                            }
-                          : null,
-                      onVerticalDragStart: widget.isExpanded
-                          ? (details) {
-                              if (isPlayable && isSelected) {
-                                setState(() {
-                                  isDragging = true;
-                                  dragOffset = 0.0;
-                                });
-                              }
-                            }
-                          : null,
-                      onVerticalDragUpdate: widget.isExpanded
-                          ? (details) {
-                              if (isPlayable && isDragging && isSelected) {
-                                setState(() {
-                                  dragOffset -= details.delta.dy;
-                                  dragOffset =
-                                      dragOffset.clamp(0.0, dropZoneHeight);
-                                });
-                              }
-                            }
-                          : null,
-                      onVerticalDragEnd: widget.isExpanded
-                          ? (details) {
-                              if (isPlayable &&
-                                  isDragging &&
-                                  isSelected &&
-                                  dragOffset > dropZoneHeight * 0.8) {
-                                widget.onCardPlayed(card);
-                                setState(() {
-                                  selectedIndex = null;
-                                });
-                              }
-                              resetCardState();
-                            }
-                          : null,
-                      onVerticalDragCancel: resetCardState,
-                      child: AnimatedContainer(
-                        duration: isDragging
-                            ? Duration.zero
-                            : const Duration(milliseconds: 150),
-                        curve: Curves.easeOutCubic,
-                        transform: Matrix4.identity()
-                          ..translate(
-                              0.0,
-                              isSelected
-                                  ? (isDragging ? -dragOffset : -20.0)
-                                  : 0.0),
-                        child: Container(
-                          decoration: isSelected
-                              ? BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.yellow.withOpacity(0.5),
-                                      blurRadius: 15,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                )
-                              : null,
-                          child: CardWidget(
+                        return Positioned(
+                          left: index * cardWidth * 0.4,
+                          bottom: 0,
+                          width: cardWidth,
+                          height: cardHeight,
+                          child: DraggableCardWidget(
                             card: card..faceUp = widget.isCurrentPlayer,
                             width: cardWidth,
                             height: cardHeight,
+                            isPlayable: isPlayable,
+                            isCurrentTurn: isPlayerTurn, // Pass turn status
+                            onCardPlayed: widget.onCardPlayed,
+                            onDoubleTap: isPlayable && isPlayerTurn
+                                ? () => widget.onCardPlayed(card)
+                                : null,
+                            onTap: isPlayable && isPlayerTurn
+                                ? () {
+                                    setState(() {
+                                      selectedIndex =
+                                          selectedIndex == index ? null : index;
+                                    });
+                                  }
+                                : null,
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     ),
-                  );
-                }),
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

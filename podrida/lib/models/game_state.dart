@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'card.dart';
 import 'player.dart';
+import 'trick_history.dart';
+import 'rules.dart';
 
 class Trick {
   List<PlayingCard> cards = [];
@@ -56,21 +58,6 @@ class GameState {
     }
   }
 
-  bool playCard(Player player, PlayingCard card) {
-    if (players[currentPlayerIndex].id != player.id) {
-      return false;
-    }
-    if (!player.hand.remove(card)) {
-      return false;
-    }
-    currentTrick.addCard(card, player);
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    if (currentTrick.cards.length == players.length) {
-      currentTrick.clear();
-    }
-    return true;
-  }
-
   void _initializeDeck() {
     deck.clear();
     for (var suit in Suit.values) {
@@ -92,5 +79,52 @@ class GameState {
       deck[i] = deck[j];
       deck[j] = temp;
     }
+  }
+
+  TrickHistory trickHistory = TrickHistory();
+
+  void _resolveTrick() {
+    if (currentTrick.cards.length == players.length) {
+      // Determine winning card
+      int winningCardIndex = GameRules.determineWinningCardIndex(
+          currentTrick.cards, trumpCard, currentTrick.leadCard!);
+
+      // Get winning player
+      Player winner = currentTrick.players[winningCardIndex];
+
+      // Create trick plays list
+      List<TrickPlay> plays = List.generate(currentTrick.cards.length,
+          (i) => TrickPlay(currentTrick.players[i], currentTrick.cards[i]));
+
+      // Add to history
+      trickHistory.addCompletedTrick(plays, winner, trumpCard);
+
+      // Set next player to the winner
+      currentPlayerIndex = players.indexOf(winner);
+
+      // Clear current trick
+      currentTrick.clear();
+    }
+  }
+
+// Update playCard method to ensure lead card is tracked
+  bool playCard(Player player, PlayingCard card) {
+    if (players[currentPlayerIndex].id != player.id) {
+      return false;
+    }
+    if (!player.hand.remove(card)) {
+      return false;
+    }
+
+    currentTrick.addCard(card, player);
+
+    // Only change current player if trick isn't complete
+    if (currentTrick.cards.length < players.length) {
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    } else {
+      _resolveTrick(); // This will set the next player to the winner
+    }
+
+    return true;
   }
 }
