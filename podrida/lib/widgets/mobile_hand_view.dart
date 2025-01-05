@@ -55,7 +55,7 @@ class _MobileHandViewState extends State<MobileHandView> {
     final handContainerHeight =
         widget.isExpanded ? screenHeight * 0.35 : screenHeight * 0.15;
     final dropZoneHeight = handContainerHeight / 2;
-    final bottomPadding = 10.0;
+    const bottomPadding = 10.0;
 
     return SizedBox(
       height: widget.isExpanded ? screenHeight * 0.45 : screenHeight * 0.15,

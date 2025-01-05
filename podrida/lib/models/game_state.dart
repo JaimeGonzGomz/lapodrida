@@ -10,10 +10,7 @@ class Trick {
   void addCard(PlayingCard card, Player player) {
     cards.add(card);
     players.add(player);
-    if (leadCard == null) {
-      // Change this condition
-      leadCard = card;
-    }
+    leadCard ??= card;
   }
 
   void clear() {

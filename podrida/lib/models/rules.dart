@@ -1,5 +1,4 @@
 import 'card.dart';
-import 'player.dart';
 
 class GameRules {
   static bool canPlayCard(

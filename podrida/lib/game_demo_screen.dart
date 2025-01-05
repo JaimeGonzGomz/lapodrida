@@ -4,8 +4,6 @@ import 'models/card.dart';
 import 'models/player.dart';
 import 'models/game_state.dart';
 import 'widgets/animated_card_widget.dart';
-import 'package:flutter/services.dart';
-import 'widgets/compact_card_display.dart';
 import 'widgets/mobile_hand_view.dart';
 import 'widgets/player_info_card.dart';
 import 'widgets/played_cards_display.dart';
