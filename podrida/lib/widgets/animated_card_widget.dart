@@ -69,3 +69,38 @@ class _AnimatedCardWidgetState extends State<AnimatedCardWidget> {
     }
   }
 }
+
+class AnimatedPlayedCard extends StatelessWidget {
+  final PlayingCard card;
+  final Offset startPosition;
+  final Offset endPosition;
+  final VoidCallback onAnimationComplete;
+
+  const AnimatedPlayedCard({
+    super.key,
+    required this.card,
+    required this.startPosition,
+    required this.endPosition,
+    required this.onAnimationComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder(
+      tween: Tween(begin: startPosition, end: endPosition),
+      duration: const Duration(milliseconds: 500),
+      onEnd: onAnimationComplete,
+      builder: (context, Offset position, child) {
+        return Positioned(
+          left: position.dx,
+          top: position.dy,
+          child: CardWidget(
+            card: card..faceUp = true,
+            width: 50,
+            height: 70,
+          ),
+        );
+      },
+    );
+  }
+}

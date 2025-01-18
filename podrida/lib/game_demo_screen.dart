@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'dart:math';
 import 'models/card.dart';
 import 'models/player.dart';
 import 'models/game_state.dart';
@@ -7,8 +7,10 @@ import 'widgets/mobile_hand_view.dart';
 import 'widgets/player_info_card.dart';
 import 'widgets/played_cards_display.dart';
 import 'models/bot_player.dart';
-
+import 'widgets/betting_phase.dart';
 import 'widgets/trick_history_display.dart';
+import 'dart:async';
+import 'models/rules.dart';
 
 class GameDemoScreen extends StatefulWidget {
   const GameDemoScreen({super.key});
@@ -22,13 +24,6 @@ class GameDemoScreenState extends State<GameDemoScreen> {
   GameState gameState = GameState();
   bool isHandExpanded = true;
 
-  @override
-  void initState() {
-    super.initState();
-    // Call setupGame in initState
-    setupGame();
-  }
-
   void setupGame() {
     setState(() {
       gameState.startNewGame([
@@ -37,15 +32,6 @@ class GameDemoScreenState extends State<GameDemoScreen> {
         Player(id: '3', name: 'Player 3'),
         Player(id: '4', name: 'Player 4'),
       ]);
-    });
-  }
-
-  void _handleCardPlayed(PlayingCard card) {
-    setState(() {
-      if (gameState.playCard(gameState.players[0], card)) {
-        // After human plays, trigger bot plays for subsequent players
-        _triggerBotPlay();
-      }
     });
   }
 
@@ -82,70 +68,238 @@ class GameDemoScreenState extends State<GameDemoScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1B5E20),
-              Color(0xFF2E7D32),
-            ],
+            colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
           ),
         ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          if (gameState.trumpCard != null)
-                            Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (gameState.trumpCard != null)
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withAlpha(77),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            'Trump Card',
-                                            style:
-                                                TextStyle(color: Colors.white),
+          child: Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              if (gameState.trumpCard != null)
+                                Center(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 32.0),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withAlpha(77),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
-                                          const SizedBox(height: 8),
-                                          CardWidget(
-                                            card: gameState.trumpCard!
-                                              ..faceUp = true,
-                                            width: 50,
-                                            height: 70,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text(
+                                                'Trump Card',
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              CardWidget(
+                                                card: gameState.trumpCard!
+                                                  ..faceUp = true,
+                                                width: 70,
+                                                height: 98,
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                  const SizedBox(width: 16),
-                                  if (gameState.currentTrick.cards.isNotEmpty)
-                                    PlayedCardsDisplay(gameState: gameState),
-                                ],
+                                      const SizedBox(width: 32),
+                                      if (gameState
+                                          .currentTrick.cards.isNotEmpty)
+                                        PlayedCardsDisplay(
+                                            gameState: gameState),
+                                    ],
+                                  ),
+                                ),
+                              Positioned.fill(
+                                child: _buildPlayerPositions(),
                               ),
-                            ),
-                          Positioned.fill(
-                            child: _buildPlayerPositions(),
+                              if (!gameState.isBettingPhase)
+                                Positioned(
+                                  top: 16,
+                                  right: 16,
+                                  child: _buildTimerDisplay(),
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        _buildControlBar(),
+                      ],
                     ),
-                    _buildControlBar(),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              if (gameState.isBettingPhase)
+                Center(
+                  child: BettingPhase(
+                    gameState: gameState,
+                    onBetPlaced: _handleBetPlaced,
+                    remainingTime: _remainingTime,
+                  ),
+                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _triggerBotBet() {
+    if (!gameState.isBettingPhase) return;
+    if (gameState.currentBettingPlayerIndex == 0)
+      return; // Skip if human player
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        final currentBot =
+            gameState.players[gameState.currentBettingPlayerIndex];
+
+        // Simple bot betting strategy
+        int remainingTricks = gameState.totalCardsInHand;
+        int totalBets = gameState.players
+            .where((p) => p.currentBet >= 0)
+            .fold(0, (sum, p) => sum + p.currentBet);
+
+        bool isLastBetter =
+            gameState.currentBettingPlayerIndex == gameState.players.length - 1;
+        int botBet;
+
+        if (isLastBetter) {
+          // Make sure total doesn't equal remaining tricks
+          do {
+            botBet = Random().nextInt(gameState.cardsPerPlayer + 1);
+          } while (totalBets + botBet == remainingTricks);
+        } else {
+          botBet = Random().nextInt(gameState.cardsPerPlayer + 1);
+        }
+
+        if (gameState.placeBet(currentBot, botBet)) {
+          _triggerBotBet(); // Continue with next bot
+        }
+      });
+    });
+  }
+
+  static const int betTimeLimit = 30; // seconds
+  static const int playTimeLimit = 20; // seconds
+
+  Timer? _actionTimer;
+  int _remainingTime = 0;
+
+  @override
+  void dispose() {
+    _actionTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer(int seconds, VoidCallback onTimeout) {
+    _actionTimer?.cancel();
+    setState(() => _remainingTime = seconds);
+
+    _actionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_remainingTime > 0) {
+          _remainingTime--;
+        } else {
+          timer.cancel();
+          onTimeout();
+        }
+      });
+    });
+  }
+
+  void _handleBetTimeout() {
+    // Make random valid bet if timer expires
+    if (gameState.isBettingPhase) {
+      final currentPlayer =
+          gameState.players[gameState.currentBettingPlayerIndex];
+      if (currentPlayer.id == '1') {
+        // Human player
+        int randomBet = Random().nextInt(gameState.cardsPerPlayer + 1);
+        _handleBetPlaced(randomBet);
+      }
+    }
+  }
+
+  void _handlePlayTimeout() {
+    // Play random valid card if timer expires
+    if (!gameState.isBettingPhase && gameState.currentPlayerIndex == 0) {
+      final player = gameState.players[0];
+      final validCards = GameRules.getPlayableCards(
+          player.hand, gameState.currentTrick.leadCard);
+      if (validCards.isNotEmpty) {
+        final randomCard = validCards[Random().nextInt(validCards.length)];
+        _handleCardPlayed(randomCard);
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    setupGame();
+    _startTimer(betTimeLimit, _handleBetTimeout);
+
+    // Add callback for trick resolution
+    gameState.onTrickResolved = () {
+      // Wait 1 second before resolving the trick
+      Future.delayed(const Duration(seconds: 1), () {
+        setState(() {
+          gameState.finishTrickResolution();
+        });
+      });
+    };
+  }
+
+  void _handleBetPlaced(int bet) {
+    setState(() {
+      Player currentPlayer =
+          gameState.players[gameState.currentBettingPlayerIndex];
+      if (gameState.placeBet(currentPlayer, bet)) {
+        // If it's a bot's turn to bet, simulate their bet
+        _triggerBotBet();
+      }
+    });
+  }
+
+  void _handleCardPlayed(PlayingCard card) {
+    setState(() {
+      if (gameState.playCard(gameState.players[0], card)) {
+        _startTimer(playTimeLimit, _handlePlayTimeout);
+        _triggerBotPlay();
+      }
+    });
+  }
+
+  Widget _buildTimerDisplay() {
+    if (_remainingTime <= 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: _remainingTime <= 5 ? Colors.red : Colors.green,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$_remainingTime seconds',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

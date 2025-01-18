@@ -34,7 +34,6 @@ class PlayerInfoCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Avatar circle
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -48,8 +47,6 @@ class PlayerInfoCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-
-            // Player details
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -63,17 +60,23 @@ class PlayerInfoCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Score: $score',
+                  'Score: ${player.score}',
                   style: TextStyle(
                     color: Colors.white.withAlpha(200),
                     fontSize: 12,
                   ),
                 ),
+                if (player.currentBet >= 0)
+                  Text(
+                    'Bet: ${player.currentBet} | Won: ${player.tricksWon}',
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(200),
+                      fontSize: 12,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(width: 12),
-
-            // Cards count
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

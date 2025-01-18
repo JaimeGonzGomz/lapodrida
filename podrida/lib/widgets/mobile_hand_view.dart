@@ -91,7 +91,7 @@ class _MobileHandViewState extends State<MobileHandView> {
                           : Colors.transparent,
                     ),
                     child: isDropTargetActive
-                        ? Center(
+                        ? const Center(
                             child: Text(
                               'Release to Play',
                               style: TextStyle(
