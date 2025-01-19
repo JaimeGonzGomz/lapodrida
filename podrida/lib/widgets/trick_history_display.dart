@@ -78,13 +78,16 @@ class TrickHistoryDisplay extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with winner and trump card
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Winner: ${trick.winner.name}',
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               if (trick.trumpCard != null)
                 Row(
@@ -102,20 +105,38 @@ class TrickHistoryDisplay extends StatelessWidget {
                 ),
             ],
           ),
+
           const Divider(color: Colors.white24),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
+
+          // Cards played in the trick
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               for (var play in trick.plays)
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Player name
                     Text(
                       play.player.name,
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
+                    // Points (using player's score)
+                    Text(
+                      '${play.player == trick.winner ? "+1" : "+0"}',
+                      style: TextStyle(
+                        color: play.player == trick.winner
+                            ? Colors.green
+                            : Colors.white54,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Card played
                     CardWidget(
                       card: play.card..faceUp = true,
                       width: 40,

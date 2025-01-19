@@ -32,6 +32,11 @@ class _MobileHandViewState extends State<MobileHandView> {
   bool isDropTargetActive = false;
 
   bool isCardPlayable(PlayingCard card) {
+    // First check if we're in betting phase
+    if (widget.gameState.isBettingPhase) {
+      return false;
+    }
+    // Then check normal card rules
     return GameRules.canPlayCard(
         card, widget.gameState.currentTrick.leadCard, widget.player.hand);
   }
@@ -60,7 +65,8 @@ class _MobileHandViewState extends State<MobileHandView> {
         children: [
           // Drop Target Area
           if (widget.isExpanded &&
-              isPlayerTurn) // Only show drop target on player's turn
+              isPlayerTurn &&
+              !widget.gameState.isBettingPhase)
             Positioned(
               top: 80,
               left: 0,
@@ -107,25 +113,21 @@ class _MobileHandViewState extends State<MobileHandView> {
               ),
             ),
 
-          // Turn Indicator (when it's not player's turn)
-          if (!isPlayerTurn && widget.isExpanded)
+          // Betting phase overlay
+          if (widget.gameState.isBettingPhase)
             Positioned(
-              top: screenHeight * 0.3,
+              bottom: handContainerHeight + 20,
               left: 0,
               right: 0,
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(150),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.black54,
+                child: const Center(
                   child: Text(
-                    'Player ${widget.gameState.currentPlayerIndex + 1}\'s Turn',
-                    style: const TextStyle(
+                    'Place your bet first',
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -138,12 +140,12 @@ class _MobileHandViewState extends State<MobileHandView> {
             bottom: 0,
             left: 0,
             right: 0,
-            height:
-                widget.isExpanded ? screenHeight * 0.35 : screenHeight * 0.15,
+            height: handContainerHeight,
             child: Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
+                // Rest of your existing card layout code...
                 Positioned(
                   bottom: 10,
                   child: SizedBox(
@@ -166,7 +168,7 @@ class _MobileHandViewState extends State<MobileHandView> {
                             width: cardWidth,
                             height: cardHeight,
                             isPlayable: isPlayable,
-                            isCurrentTurn: isPlayerTurn, // Pass turn status
+                            isCurrentTurn: isPlayerTurn,
                             onCardPlayed: widget.onCardPlayed,
                             onDoubleTap: isPlayable && isPlayerTurn
                                 ? () => widget.onCardPlayed(card)

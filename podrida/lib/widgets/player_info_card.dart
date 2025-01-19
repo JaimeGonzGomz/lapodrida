@@ -66,43 +66,32 @@ class PlayerInfoCard extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                if (player.currentBet >= 0)
-                  Text(
-                    'Bet: ${player.currentBet} | Won: ${player.tricksWon}',
-                    style: TextStyle(
-                      color: Colors.white.withAlpha(200),
-                      fontSize: 12,
+                // Make tricks won info more prominent
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: player.tricksWon == player.currentBet
+                            ? Colors.green.withAlpha(100)
+                            : Colors.black.withAlpha(100),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Tricks: ${player.tricksWon}/${player.currentBet}',
+                        style: TextStyle(
+                          color: player.tricksWon == player.currentBet
+                              ? Colors.green.shade300
+                              : Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
               ],
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(50),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 20,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade600,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'x${cards.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),

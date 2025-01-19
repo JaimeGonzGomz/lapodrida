@@ -33,51 +33,30 @@ class _BettingPhaseState extends State<BettingPhase> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+        color: Colors.black87.withOpacity(0.8),
+        border: Border(
+          top: BorderSide(color: Colors.white10),
+          bottom: BorderSide(color: Colors.white10),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left side - Timer and Trump
-          Row(
-            children: [
-              // Timer
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: widget.remainingTime <= 5 ? Colors.red : Colors.green,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${widget.remainingTime}s',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          // Left side - Timer only (removed Trump)
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: widget.remainingTime <= 5 ? Colors.red : Colors.green,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${widget.remainingTime}s',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
-              if (widget.gameState.trumpCard != null) ...[
-                const SizedBox(width: 16),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Trump',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    const SizedBox(height: 4),
-                    CardWidget(
-                      card: widget.gameState.trumpCard!..faceUp = true,
-                      width: 35,
-                      height: 49,
-                    ),
-                  ],
-                ),
-              ],
-            ],
+            ),
           ),
-
           // Center - Betting controls
           Column(
             mainAxisSize: MainAxisSize.min,

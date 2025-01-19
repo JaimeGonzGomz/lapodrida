@@ -145,6 +145,9 @@ class GameState {
   }
 
   bool playCard(Player player, PlayingCard card) {
+    if (isBettingPhase) {
+      return false;
+    }
     if (players[currentPlayerIndex].id != player.id) {
       return false;
     }
@@ -188,14 +191,18 @@ class GameState {
   }
 
   void _calculateRoundScores() {
+    print("GameState._calculateRoundScores called");
     for (var player in players) {
-      // Points for each trick won
       player.score += player.tricksWon;
-
-      // Bonus points for correct bet
       if (player.tricksWon == player.currentBet) {
         player.score += 10;
       }
     }
+
+    // Use the existing onTrickResolved callback
+    if (onTrickResolved != null) {
+      onTrickResolved!();
+    }
   }
 }
+// In game_state.dart

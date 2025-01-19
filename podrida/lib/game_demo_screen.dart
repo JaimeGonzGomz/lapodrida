@@ -36,24 +36,34 @@ class GameDemoScreenState extends State<GameDemoScreen> {
   }
 
   void _triggerBotPlay() {
+    print(
+        "Triggering bot play, current player: ${gameState.currentPlayerIndex}");
+
     // Don't trigger if it's the human player's turn
-    if (gameState.currentPlayerIndex == 0 ||
-        gameState.currentTrick.cards.length >= gameState.players.length) {
+    if (gameState.currentPlayerIndex == 0) {
+      return;
+    }
+
+    // Don't trigger if trick is complete
+    if (gameState.currentTrick.cards.length >= gameState.players.length) {
       return;
     }
 
     Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+
       setState(() {
         try {
           final currentBot = gameState.players[gameState.currentPlayerIndex];
-          if (currentBot.hand.isEmpty) return; // Don't play if hand is empty
+          if (currentBot.hand.isEmpty) {
+            print("Bot ${currentBot.name} has no cards left");
+            return;
+          }
 
           PlayingCard selectedCard =
               BotPlayer.playCard(currentBot, gameState.currentTrick.leadCard);
 
-          // For debugging - print bot's decision making
-          BotPlayer.debugBotPlay(currentBot, gameState.currentTrick.leadCard);
-
+          print("Bot ${currentBot.name} playing card");
           if (gameState.playCard(currentBot, selectedCard)) {
             // Only trigger next bot if trick isn't complete
             if (gameState.currentTrick.cards.length <
@@ -82,18 +92,10 @@ class GameDemoScreenState extends State<GameDemoScreen> {
         child: SafeArea(
           child: Stack(
             children: [
-              // Main game layout including betting phase at top
+              // Main game layout
               Column(
                 children: [
-                  // Betting phase at top when active
-                  if (gameState.isBettingPhase)
-                    BettingPhase(
-                      gameState: gameState,
-                      onBetPlaced: _handleBetPlaced,
-                      remainingTime: _remainingTime,
-                    ),
-
-                  // Game area
+                  // Game area takes most space
                   Expanded(
                     child: Stack(
                       children: [
@@ -109,11 +111,48 @@ class GameDemoScreenState extends State<GameDemoScreen> {
                       ],
                     ),
                   ),
+                  // Control/admin bar first
                   _buildControlBar(),
+                  // Then betting phase if active
+                  if (gameState.isBettingPhase)
+                    BettingPhase(
+                      gameState: gameState,
+                      onBetPlaced: _handleBetPlaced,
+                      remainingTime: _remainingTime,
+                    ),
                 ],
               ),
 
-              // Betting Summary overlay (when needed)
+              // Trump card and betting summary overlays remain in the stack
+              if (gameState.trumpCard != null)
+                Positioned(
+                  left: 20,
+                  bottom: kBottomNavigationBarHeight + 80,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(77),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Trump',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        const SizedBox(height: 4),
+                        CardWidget(
+                          card: gameState.trumpCard!..faceUp = true,
+                          width: 62.5,
+                          height: 87.5,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Betting Summary overlay
               if (showBettingSummary)
                 Positioned.fill(
                   child: Container(
@@ -234,12 +273,42 @@ class GameDemoScreenState extends State<GameDemoScreen> {
     setupGame();
     _startTimer(betTimeLimit, _handleBetTimeout);
 
-    // Add callback for trick resolution
     gameState.onTrickResolved = () {
-      // Wait 1 second before resolving the trick
       Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
+
         setState(() {
           gameState.finishTrickResolution();
+          print(
+              "Trick finished, next player index: ${gameState.currentPlayerIndex}");
+
+          // Check if round is over
+          if (gameState.players.every((p) => p.hand.isEmpty)) {
+            print("Round is over, starting new round...");
+            for (var player in gameState.players) {
+              player.score += player.tricksWon;
+              if (player.tricksWon == player.currentBet) {
+                player.score += 10;
+              }
+            }
+
+            Future.delayed(const Duration(seconds: 2), () {
+              if (!mounted) return;
+              setState(() {
+                gameState.startNewRound();
+                _startTimer(betTimeLimit, _handleBetTimeout);
+              });
+            });
+          } else {
+            // Trigger bot play if it's their turn
+            print("Round continues, checking if bot should play...");
+            if (gameState.currentPlayerIndex != 0) {
+              _triggerBotPlay();
+            } else {
+              // Start timer for human player
+              _startTimer(playTimeLimit, _handlePlayTimeout);
+            }
+          }
         });
       });
     };
@@ -367,33 +436,8 @@ class GameDemoScreenState extends State<GameDemoScreen> {
           ),
 
         // Trump card (at bottom left)
-        if (gameState.trumpCard != null)
-          Positioned(
-            left: 20,
-            bottom: screenHeight * 0.2,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(77),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Trump',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 4),
-                  CardWidget(
-                    card: gameState.trumpCard!..faceUp = true,
-                    width: 50,
-                    height: 70,
-                  ),
-                ],
-              ),
-            ),
-          ),
+
+        // Trump card (moved under Player 2)
 
         // Current player's hand
         Positioned(
@@ -527,6 +571,22 @@ class GameDemoScreenState extends State<GameDemoScreen> {
                   },
                 ),
               ],
+            ),
+            const SizedBox(width: 16),
+            TextButton.icon(
+              onPressed: () {
+                setState(() => showBettingSummary = true);
+                Future.delayed(const Duration(seconds: 3), () {
+                  if (mounted) {
+                    setState(() => showBettingSummary = false);
+                  }
+                });
+              },
+              icon: const Icon(Icons.analytics, color: Colors.white70),
+              label: const Text(
+                'Betting Summary',
+                style: TextStyle(color: Colors.white70),
+              ),
             ),
             const SizedBox(width: 16),
             ElevatedButton(
