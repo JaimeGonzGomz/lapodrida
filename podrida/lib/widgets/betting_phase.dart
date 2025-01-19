@@ -7,12 +7,14 @@ class BettingPhase extends StatefulWidget {
   final GameState gameState;
   final Function(int) onBetPlaced;
   final int remainingTime;
+  final VoidCallback? onHide;
 
   const BettingPhase({
     super.key,
     required this.gameState,
     required this.onBetPlaced,
     required this.remainingTime,
+    this.onHide,
   });
 
   @override
@@ -28,103 +30,125 @@ class _BettingPhaseState extends State<BettingPhase> {
         widget.gameState.players[widget.gameState.currentBettingPlayerIndex];
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black87,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Timer display
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: widget.remainingTime <= 5 ? Colors.red : Colors.green,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${widget.remainingTime} seconds',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (widget.gameState.trumpCard != null)
-            Column(
-              children: [
-                const Text(
-                  'Trump Card',
-                  style: TextStyle(color: Colors.white),
-                ),
-                const SizedBox(height: 8),
-                CardWidget(
-                  card: widget.gameState.trumpCard!..faceUp = true,
-                  width: 70,
-                  height: 98,
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          Text(
-            '${currentPlayer.name}\'s Bet',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
+          // Left side - Timer and Trump
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.remove_circle, color: Colors.white),
-                onPressed: selectedBet > 0
-                    ? () => setState(() => selectedBet--)
-                    : null,
-              ),
+              // Timer
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade800,
+                  color: widget.remainingTime <= 5 ? Colors.red : Colors.green,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '$selectedBet',
+                  '${widget.remainingTime}s',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Colors.white),
-                onPressed: selectedBet < widget.gameState.cardsPerPlayer
-                    ? () => setState(() => selectedBet++)
-                    : null,
+              if (widget.gameState.trumpCard != null) ...[
+                const SizedBox(width: 16),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Trump',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    CardWidget(
+                      card: widget.gameState.trumpCard!..faceUp = true,
+                      width: 35,
+                      height: 49,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+
+          // Center - Betting controls
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${currentPlayer.name}\'s Bet',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle,
+                        color: Colors.white, size: 20),
+                    onPressed: selectedBet > 0
+                        ? () => setState(() => selectedBet--)
+                        : null,
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade800,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$selectedBet',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle,
+                        color: Colors.white, size: 20),
+                    onPressed: selectedBet < widget.gameState.cardsPerPlayer
+                        ? () => setState(() => selectedBet++)
+                        : null,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              widget.onBetPlaced(selectedBet);
-              setState(() => selectedBet = 0);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-            ),
-            child: const Text('Place Bet'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Total bets: ${_calculateTotalBets()}/${widget.gameState.totalCardsInHand}',
-            style: const TextStyle(color: Colors.white70),
+
+          // Right side - Place bet button and total
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  widget.onBetPlaced(selectedBet);
+                  setState(() => selectedBet = 0);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text('Place Bet'),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Total: ${_calculateTotalBets()}/${widget.gameState.totalCardsInHand}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ),

@@ -56,31 +56,27 @@ class GameState {
   DelayedCallback? onTrickResolved;
   void finishTrickResolution() {
     if (currentTrick.cards.length == players.length) {
-      // Determine winning card again
       int winningCardIndex = GameRules.determineWinningCardIndex(
           currentTrick.cards, trumpCard, currentTrick.leadCard!);
-      Player winner = currentTrick.players[winningCardIndex];
 
-      // Increment tricks won
+      Player winner = currentTrick.players[winningCardIndex];
       winner.tricksWon++;
 
-      // Create trick plays list
+      // Add to history
       List<TrickPlay> plays = List.generate(currentTrick.cards.length,
           (i) => TrickPlay(currentTrick.players[i], currentTrick.cards[i]));
-
-      // Add to history
       trickHistory.addCompletedTrick(plays, winner, trumpCard);
 
-      // Set next player to the winner
+      // Clear current trick BEFORE setting next player
+      currentTrick.clear();
+
+      // Set next player to winner
       currentPlayerIndex = players.indexOf(winner);
 
-      // If this was the last trick, calculate scores
+      // Calculate scores if round is over
       if (players.every((p) => p.hand.isEmpty)) {
         _calculateRoundScores();
       }
-
-      // Clear current trick
-      currentTrick.clear();
     }
   }
 

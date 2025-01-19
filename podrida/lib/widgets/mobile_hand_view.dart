@@ -67,13 +67,13 @@ class _MobileHandViewState extends State<MobileHandView> {
               right: 0,
               bottom: handContainerHeight + 20,
               child: DragTarget<PlayingCard>(
-                onWillAccept: (card) {
+                onWillAcceptWithDetails: (details) {
                   setState(() => isDropTargetActive = true);
-                  return card != null && isCardPlayable(card);
+                  return isCardPlayable(details.data);
                 },
-                onAccept: (card) {
+                onAcceptWithDetails: (details) {
                   setState(() => isDropTargetActive = false);
-                  widget.onCardPlayed(card);
+                  widget.onCardPlayed(details.data);
                 },
                 onLeave: (_) => setState(() => isDropTargetActive = false),
                 builder: (context, candidateData, rejectedData) {

@@ -37,12 +37,17 @@ class GameDemoScreenState extends State<GameDemoScreen> {
 
   void _triggerBotPlay() {
     // Don't trigger if it's the human player's turn
-    if (gameState.currentPlayerIndex == 0) return;
+    if (gameState.currentPlayerIndex == 0 ||
+        gameState.currentTrick.cards.length >= gameState.players.length) {
+      return;
+    }
 
     Future.delayed(const Duration(milliseconds: 500), () {
       setState(() {
         try {
           final currentBot = gameState.players[gameState.currentPlayerIndex];
+          if (currentBot.hand.isEmpty) return; // Don't play if hand is empty
+
           PlayingCard selectedCard =
               BotPlayer.playCard(currentBot, gameState.currentTrick.leadCard);
 
@@ -50,8 +55,11 @@ class GameDemoScreenState extends State<GameDemoScreen> {
           BotPlayer.debugBotPlay(currentBot, gameState.currentTrick.leadCard);
 
           if (gameState.playCard(currentBot, selectedCard)) {
-            // Recursively trigger next bot's play
-            _triggerBotPlay();
+            // Only trigger next bot if trick isn't complete
+            if (gameState.currentTrick.cards.length <
+                gameState.players.length) {
+              _triggerBotPlay();
+            }
           }
         } catch (e) {
           print('Error during bot play: $e');
@@ -74,81 +82,43 @@ class GameDemoScreenState extends State<GameDemoScreen> {
         child: SafeArea(
           child: Stack(
             children: [
-              CustomScrollView(
-                slivers: [
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Column(
+              // Main game layout including betting phase at top
+              Column(
+                children: [
+                  // Betting phase at top when active
+                  if (gameState.isBettingPhase)
+                    BettingPhase(
+                      gameState: gameState,
+                      onBetPlaced: _handleBetPlaced,
+                      remainingTime: _remainingTime,
+                    ),
+
+                  // Game area
+                  Expanded(
+                    child: Stack(
                       children: [
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              if (gameState.trumpCard != null)
-                                Center(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 32.0),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withAlpha(77),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Text(
-                                                'Trump Card',
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              CardWidget(
-                                                card: gameState.trumpCard!
-                                                  ..faceUp = true,
-                                                width: 70,
-                                                height: 98,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 32),
-                                      if (gameState
-                                          .currentTrick.cards.isNotEmpty)
-                                        PlayedCardsDisplay(
-                                            gameState: gameState),
-                                    ],
-                                  ),
-                                ),
-                              Positioned.fill(
-                                child: _buildPlayerPositions(),
-                              ),
-                              if (!gameState.isBettingPhase)
-                                Positioned(
-                                  top: 16,
-                                  right: 16,
-                                  child: _buildTimerDisplay(),
-                                ),
-                            ],
-                          ),
+                        Positioned.fill(
+                          child: _buildPlayerPositions(),
                         ),
-                        _buildControlBar(),
+                        if (!gameState.isBettingPhase)
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: _buildTimerDisplay(),
+                          ),
                       ],
                     ),
                   ),
+                  _buildControlBar(),
                 ],
               ),
-              if (gameState.isBettingPhase)
-                Center(
-                  child: BettingPhase(
-                    gameState: gameState,
-                    onBetPlaced: _handleBetPlaced,
-                    remainingTime: _remainingTime,
+
+              // Betting Summary overlay (when needed)
+              if (showBettingSummary)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black26,
+                    child: Center(child: _buildBettingSummary()),
                   ),
                 ),
             ],
@@ -160,8 +130,9 @@ class GameDemoScreenState extends State<GameDemoScreen> {
 
   void _triggerBotBet() {
     if (!gameState.isBettingPhase) return;
-    if (gameState.currentBettingPlayerIndex == 0)
+    if (gameState.currentBettingPlayerIndex == 0) {
       return; // Skip if human player
+    }
 
     Future.delayed(const Duration(milliseconds: 500), () {
       setState(() {
@@ -211,6 +182,13 @@ class GameDemoScreenState extends State<GameDemoScreen> {
     setState(() => _remainingTime = seconds);
 
     _actionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (gameState.isBettingPhase &&
+              gameState.currentBettingPlayerIndex != 0 ||
+          !gameState.isBettingPhase && gameState.currentPlayerIndex != 0) {
+        timer.cancel();
+        return;
+      }
+
       setState(() {
         if (_remainingTime > 0) {
           _remainingTime--;
@@ -221,6 +199,8 @@ class GameDemoScreenState extends State<GameDemoScreen> {
       });
     });
   }
+
+  bool isBettingVisible = true;
 
   void _handleBetTimeout() {
     // Make random valid bet if timer expires
@@ -270,7 +250,16 @@ class GameDemoScreenState extends State<GameDemoScreen> {
       Player currentPlayer =
           gameState.players[gameState.currentBettingPlayerIndex];
       if (gameState.placeBet(currentPlayer, bet)) {
-        // If it's a bot's turn to bet, simulate their bet
+        if (!gameState.isBettingPhase) {
+          // Only show summary when all bets are placed
+          isBettingVisible = false;
+          showBettingSummary = true;
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => showBettingSummary = false);
+            }
+          });
+        }
         _triggerBotBet();
       }
     });
@@ -286,21 +275,39 @@ class GameDemoScreenState extends State<GameDemoScreen> {
   }
 
   Widget _buildTimerDisplay() {
-    if (_remainingTime <= 0) return const SizedBox.shrink();
+    if (_remainingTime <= 0 ||
+        (gameState.isBettingPhase &&
+            gameState.currentBettingPlayerIndex != 0) ||
+        (!gameState.isBettingPhase && gameState.currentPlayerIndex != 0)) {
+      return const SizedBox.shrink();
+    }
+
+    final progress = _remainingTime /
+        (gameState.isBettingPhase ? betTimeLimit : playTimeLimit);
 
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _remainingTime <= 5 ? Colors.red : Colors.green,
-        borderRadius: BorderRadius.circular(8),
+      width: 60,
+      height: 60,
+      decoration: const BoxDecoration(
+        color: Colors.black54,
+        shape: BoxShape.circle,
       ),
-      child: Text(
-        '$_remainingTime seconds',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(50, 50),
+            painter: TimerProgressPainter(progress),
+          ),
+          Text(
+            '$_remainingTime',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -348,19 +355,47 @@ class GameDemoScreenState extends State<GameDemoScreen> {
           ),
         ),
 
-        // Current player's info (left side)
-        Positioned(
-          left: 10,
-          bottom: screenHeight * 0.15,
-          child: PlayerInfoCard(
-            player: gameState.players[0],
-            score: 1000,
-            cards: gameState.players[0].hand,
-            isCurrentPlayer: true,
+        // Center area for played cards
+        if (gameState.currentTrick.cards.isNotEmpty)
+          Positioned(
+            top: screenHeight * 0.25,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: PlayedCardsDisplay(gameState: gameState),
+            ),
           ),
-        ),
 
-        // Current player's hand (center bottom)
+        // Trump card (at bottom left)
+        if (gameState.trumpCard != null)
+          Positioned(
+            left: 20,
+            bottom: screenHeight * 0.2,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(77),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Trump',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  CardWidget(
+                    card: gameState.trumpCard!..faceUp = true,
+                    width: 50,
+                    height: 70,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Current player's hand
         Positioned(
           bottom: 0,
           left: 0,
@@ -378,6 +413,55 @@ class GameDemoScreenState extends State<GameDemoScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  bool showBettingSummary = false;
+
+  Widget _buildBettingSummary() {
+    return AnimatedOpacity(
+      opacity: showBettingSummary ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Betting Summary',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...gameState.players.map((player) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        player.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      Text(
+                        '${player.currentBet} tricks',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -471,4 +555,28 @@ class GameDemoScreenState extends State<GameDemoScreen> {
       ),
     );
   }
+}
+
+class TimerProgressPainter extends CustomPainter {
+  final double progress;
+
+  TimerProgressPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = progress <= 0.3 ? Colors.red : Colors.green
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    const startAngle = -90 * (3.14159 / 180); // Start from top
+    final sweepAngle = 360 * (3.14159 / 180) * progress;
+
+    canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
+  }
+
+  @override
+  bool shouldRepaint(TimerProgressPainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }

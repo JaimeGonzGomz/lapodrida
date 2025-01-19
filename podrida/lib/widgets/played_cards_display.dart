@@ -69,7 +69,7 @@ class _PlayedCardsDisplayState extends State<PlayedCardsDisplay> {
                       height: 70,
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
