@@ -33,6 +33,7 @@ dependencies:
   flutter_svg: ^2.0.9
   cupertino_icons: ^1.0.6
   super_drag_and_drop: ^0.8.9
+  supabase_flutter: ^2.8.3
 
 flutter:
   assets:

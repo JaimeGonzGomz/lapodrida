@@ -22,10 +22,23 @@ class Trick {
   }
 } // In game_state.dart
 
+class RoundSummary {
+  final List<PlayerRoundInfo> playerInfo;
+  RoundSummary(this.playerInfo);
+}
+
+class PlayerRoundInfo {
+  final String name;
+  final int bet;
+  final int won;
+  PlayerRoundInfo(this.name, this.bet, this.won);
+}
+
 // In game_state.dart
 typedef DelayedCallback = void Function();
 
 class GameState {
+  List<RoundSummary> roundHistory = [];
   List<Player> players = [];
   PlayingCard? trumpCard;
   List<PlayingCard> deck = [];
@@ -87,6 +100,15 @@ class GameState {
   }
 
   void startNewRound() {
+    if (!isBettingPhase && players.any((p) => p.tricksWon > 0)) {
+      roundHistory.add(RoundSummary(players
+          .map((p) => PlayerRoundInfo(p.name, p.currentBet, p.tricksWon))
+          .toList()));
+      // Keep only last 3 rounds
+      if (roundHistory.length > 3) {
+        roundHistory.removeAt(0);
+      }
+    }
     for (var player in players) {
       player.resetRoundStats();
       player.hand.clear();
