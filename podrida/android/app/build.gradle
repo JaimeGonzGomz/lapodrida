@@ -54,7 +54,9 @@ android {
         }
     }
 }
-
+dependencies {
+    implementation 'com.google.android.gms:play-services-auth:20.5.0' // Add Google Play Services Auth
+}
 flutter {
     source = "../.."
 }

@@ -25,3 +25,4 @@ podrida/android/settings.gradle
 podrida/ios/Runner/Info.plist
 podrida/.env
 podrida/lib/auth.dart
+podrida/android/app/google-services.json
