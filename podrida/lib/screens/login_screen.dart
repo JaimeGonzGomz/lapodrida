@@ -1,17 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../auth.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final supabase = Supabase.instance.client;
-
-  LoginScreen({super.key});
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
-      await supabase.auth.signInWithOAuth(OAuthProvider.google,
-          redirectTo: 'io.supabase.flutter://callback');
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: AuthConfig.iosClientId,
+        serverClientId: AuthConfig.webClientId,
+      );
+
+      final googleUser = await googleSignIn.signIn();
+      final googleAuth = await googleUser!.authentication;
+      final accessToken = googleAuth.accessToken;
+      final idToken = googleAuth.idToken;
+
+      if (accessToken == null) throw 'No Access Token found.';
+      if (idToken == null) throw 'No ID Token found.';
+
+      await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}')),
         );

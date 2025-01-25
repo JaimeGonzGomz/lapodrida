@@ -34,9 +34,13 @@ dependencies:
   cupertino_icons: ^1.0.6
   super_drag_and_drop: ^0.8.9
   supabase_flutter: ^2.8.3
+  flutter_dotenv: ^5.0.2
+  google_sign_in: ^6.2.2
 
 flutter:
   assets:
+  
+    - .env
     - assets/cards/
     - assets/cards/clubs/
     - assets/cards/diamonds/

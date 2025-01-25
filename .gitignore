@@ -23,3 +23,5 @@
 **/web/icons/
 podrida/android/settings.gradle
 podrida/ios/Runner/Info.plist
+podrida/.env
+podrida/lib/auth.dart
